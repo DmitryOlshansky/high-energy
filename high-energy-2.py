@@ -69,59 +69,98 @@ shifts = sorted([float(x) for y in csv['nmr'] for x in y])
 shifts = np.array(shifts, dtype=float)
 X = shifts.reshape(-1, 1)
 
-def create_binary_prop_encoder(thresholds):
-    def encoder(value):
-        return bisect.bisect(thresholds, value) + 1
-    return encoder
-
-prop_encoder = create_binary_prop_encoder([7.0, 11.25])
 activities = sorted([float(x) for x in csv['spark']])
+activities = np.array(activities, dtype=float)
+Y = activities.reshape(-1, 1)
 
-def experiment(rid):
+def experiment(rid, props_count, bound):
     with open("spark-%s.fimi" % rid, "w") as f:
-        f.write("# attributes: %d properties: O(1,2,3)\n" % (max_fimi+1))
+        fmt = "# attributes: %d properties: O("+",".join([str(x) for x in range(1, props_count+1)])+")\n"
+        f.write(fmt % (max_fimi+1))
         for i in range(0, len(data)):
             fcsp_line = encode_fcsp(csv['fcss'][i])
             max_nmr_line = nmr_encoder(csv['nmr'][i])
-            #full_line = fcsp_line + " " + max_nmr_line
-            full_line = max_nmr_line
+            full_line = fcsp_line + " " + max_nmr_line
+            #full_line = max_nmr_line
             prop_part = " | %s" % prop_encoder(float(csv['spark'][i]))
-            f.write(full_line+prop_part+"\n")
+            if prop_encoder(float(csv['spark'][i])) != 2:
+                f.write(full_line+prop_part+"\n")
     env = { "JAVA_OPTS" : "-Xms512m -Xmx512m" }
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "split", "5", "spark-%s.fimi" % rid,  "train-%s.fimi" % rid, "verify-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "verify-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:50", "train-%s.fimi" %rid], stdout=subprocess.DEVNULL, env=env) 
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:%s" % bound, "train-%s.fimi" %rid], stdout=subprocess.DEVNULL, env=env) 
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-%s.fimi" % rid, "-o", "predictions-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-%s.fimi" % rid, "-o", "predictions-train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     text = subprocess.check_output(["./jsm4s/target/universal/stage/bin/jsm-cli", "stats", "verify-%s.fimi" % rid, "predictions-%s.fimi" % rid], env=env)
     for line in str(text).split("\n"):
-        m = re.search(r"Correct predictions ratio \d+/\d+ (\d+.\d)+%", line)
+        m = re.search(r"Correct predictions ratio \d+/\d+ (\d+\.\d+)%", line)
         if m:
-            result = float(m.group(1))
-    return result
+            result_test = float(m.group(1))
+    text = subprocess.check_output(["./jsm4s/target/universal/stage/bin/jsm-cli", "stats", "train-%s.fimi" % rid, "predictions-train-%s.fimi" % rid], env=env)
+    for line in str(text).split("\n"):
+        m = re.search(r"Correct predictions ratio \d+/\d+ (\d+\.\d+)%", line)
+        if m:
+            #print(line)
+            result_train = float(m.group(1))
+    #print(">", result_test, result_train)
+    return result_test, result_train
 
 pool = futures.ThreadPoolExecutor(10)
 
-for k in range(2,35):
-    kmeans = KMeans(n_clusters=k, n_init='auto', random_state=0).fit(X)
-    labels = kmeans.labels_ 
-    max_fimi = nmr_attrs_start + k
-    runs = 20
-    avg_of_runs = 0.0
-    for r in range(0, runs):
-        iters = 20
-        def nmr_encoder(nmrs):
-            encoded = { }
-            def conv(x):
-                return int(labels[bisect.bisect(X, float(x))-1])
-            for n in nmrs:
-                encoded[nmr_attrs_start + conv(n)] = True
-            return " ".join([str(k) for k in sorted(encoded.keys())])
-        result = 0.0
-        futures = []
-        for i in range(iters):
-            futures.append(pool.submit(experiment, i))
-        for i in range(iters):
-            result += futures[i].result()
-        avg_of_runs += result / iters
-    avg_of_runs /= runs
-    print("K = %s, P = %s" % (k, avg_of_runs))
+
+for k in range(13,16):
+    for bound in range(60, 90, 10):
+        for q in range(3, 4):
+            km = KMeans(n_clusters=q, n_init='auto', random_state=0).fit(Y)
+            prop_cluster = km.labels_
+            cluster_sizes = { }
+            for c in prop_cluster:
+                if c in cluster_sizes:
+                    cluster_sizes[c] += 1
+                else:
+                    cluster_sizes[c] = 1
+            #print(cluster_sizes)
+            #print(cluster_sizes[2] / (cluster_sizes[0] + cluster_sizes[2]))
+            #print(prop_cluster)
+            #print(len(prop_cluster))
+            def prop_encoder(property):
+                #print(">", bisect.bisect(activities, float(property)))
+                #print(">>",prop_cluster[bisect.bisect(activities, float(property))-1])
+                pos = bisect.bisect(activities, float(property))-1
+                #print(pos, " -> ",prop_cluster[pos])
+                r = int(prop_cluster[pos]) + 1
+                #print(r)
+                return r
+                
+            
+            kmeans = KMeans(n_clusters=k, n_init='auto', random_state=0).fit(X)
+            labels = kmeans.labels_ 
+            max_fimi = nmr_attrs_start + k
+            runs = 20
+            avg_of_runs_test = 0.0
+            avg_of_runs_train = 0.0
+            for r in range(0, runs):
+                iters = 20
+                def nmr_encoder(nmrs):
+                    encoded = { }
+                    def conv(x):
+                        return int(labels[bisect.bisect(shifts, float(x))-1])
+                    for n in nmrs:
+                        encoded[nmr_attrs_start + conv(n)] = True
+                    return " ".join([str(k) for k in sorted(encoded.keys())])
+                result_test = 0.0
+                result_train = 0.0
+                futures = []
+                for i in range(iters):
+                    futures.append(pool.submit(experiment, i, q, bound))
+                for i in range(iters):
+                    test, train = futures[i].result()
+                    result_train += train
+                    result_test += test
+                #print("Test = %s, Train = %s" % (result_test / iters, result_train / iters))
+                avg_of_runs_test += result_test / iters
+                avg_of_runs_train += result_train / iters
+            avg_of_runs_test /= runs
+            avg_of_runs_train /= runs
+            print("Bound = %s, Q = %s, K = %s, Ptest = %s, Ptrain = %s" % (bound, q, k, avg_of_runs_test, avg_of_runs_train))
