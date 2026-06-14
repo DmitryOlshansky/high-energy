@@ -70,23 +70,46 @@ shifts = np.array(shifts, dtype=float)
 X = shifts.reshape(-1, 1)
 
 activities = sorted([float(x) for x in csv['spark']])
-activities = np.array(activities, dtype=float)
+activities = np.array(activities[:-5], dtype=float)
+threshold = activities[len(activities) // 2]
+max_threshold = activities[-1]
 Y = activities.reshape(-1, 1)
 
 def experiment(rid, props_count, bound):
-    with open("spark-%s.fimi" % rid, "w") as f:
+    data_split = [[], []]
+    for i in range(0, len(data)):
+        fcsp_line = encode_fcsp(csv['fcss'][i])
+        max_nmr_line = nmr_encoder(csv['nmr'][i])
+        full_line = fcsp_line + " " + max_nmr_line
+        #full_line = max_nmr_line
+        p = prop_encoder(float(csv['spark'][i]))
+        prop_part = " | %s" % p
+        if p > 0:
+            data_split[p-1].append(full_line+prop_part+"\n")
+    np.random.shuffle(data_split[0])
+    np.random.shuffle(data_split[1])
+    #print(data_split)
+    i, j = 0, 0
+    with open("train-%s.fimi" % rid, "w") as f_train:
         fmt = "# attributes: %d properties: O("+",".join([str(x) for x in range(1, props_count+1)])+")\n"
-        f.write(fmt % (max_fimi+1))
-        for i in range(0, len(data)):
-            fcsp_line = encode_fcsp(csv['fcss'][i])
-            max_nmr_line = nmr_encoder(csv['nmr'][i])
-            full_line = fcsp_line + " " + max_nmr_line
-            #full_line = max_nmr_line
-            prop_part = " | %s" % prop_encoder(float(csv['spark'][i]))
-            if prop_encoder(float(csv['spark'][i])) != 2:
-                f.write(full_line+prop_part+"\n")
+        f_train.write(fmt % (max_fimi+1))
+        while i < len(data_split[0])-2:
+            f_train.write(data_split[0][i])
+            i += 1
+        while j < len(data_split[1])-2:
+            f_train.write(data_split[1][j])
+            j += 1
+    with open("verify-%s.fimi" % rid, "w") as f_test:
+        fmt = "# attributes: %d properties: O("+",".join([str(x) for x in range(1, props_count+1)])+")\n"
+        f_test.write(fmt % (max_fimi+1))
+        while i < len(data_split[0]):
+            f_test.write(data_split[0][i])
+            i += 1
+        while j < len(data_split[1]):
+            f_test.write(data_split[1][j])
+            j += 1
     env = { "JAVA_OPTS" : "-Xms512m -Xmx512m" }
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "split", "5", "spark-%s.fimi" % rid,  "train-%s.fimi" % rid, "verify-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
+    #subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "split", "5", "spark-%s.fimi" % rid,  "train-%s.fimi" % rid, "verify-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "verify-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:%s" % bound, "train-%s.fimi" %rid], stdout=subprocess.DEVNULL, env=env) 
@@ -110,7 +133,7 @@ pool = futures.ThreadPoolExecutor(10)
 
 
 for k in range(13,16):
-    for bound in range(60, 90, 10):
+    for bound in range(30, 90, 10):
         for q in range(3, 4):
             km = KMeans(n_clusters=q, n_init='auto', random_state=0).fit(Y)
             prop_cluster = km.labels_
@@ -120,19 +143,22 @@ for k in range(13,16):
                     cluster_sizes[c] += 1
                 else:
                     cluster_sizes[c] = 1
-            #print(cluster_sizes)
+            print(cluster_sizes)
             #print(cluster_sizes[2] / (cluster_sizes[0] + cluster_sizes[2]))
             #print(prop_cluster)
             #print(len(prop_cluster))
             def prop_encoder(property):
+                if property > max_threshold:
+                    return 0
                 #print(">", bisect.bisect(activities, float(property)))
                 #print(">>",prop_cluster[bisect.bisect(activities, float(property))-1])
-                pos = bisect.bisect(activities, float(property))-1
+                #pos = bisect.bisect(activities, float(property))-1
+                if (property <= threshold):
+                    return 1
+                return 2
                 #print(pos, " -> ",prop_cluster[pos])
-                r = int(prop_cluster[pos]) + 1
-                #print(r)
-                return r
-                
+                #r = int(prop_cluster[pos]) + 1
+                #return r
             
             kmeans = KMeans(n_clusters=k, n_init='auto', random_state=0).fit(X)
             labels = kmeans.labels_ 
@@ -158,7 +184,7 @@ for k in range(13,16):
                     test, train = futures[i].result()
                     result_train += train
                     result_test += test
-                #print("Test = %s, Train = %s" % (result_test / iters, result_train / iters))
+                print("Test = %s, Train = %s" % (result_test / iters, result_train / iters))
                 avg_of_runs_test += result_test / iters
                 avg_of_runs_train += result_train / iters
             avg_of_runs_test /= runs
