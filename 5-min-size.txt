@@ -1,0 +1,15 @@
+dmitry@Dmitrys-MacBook-Pro-2 high-energy % python3 high-energy-2.py            
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 13, Ptest = 40.4375, Ptrain = 84.26315789473685
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 14, Ptest = 39.3125, Ptrain = 83.57894736842104
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 15, Ptest = 38.9375, Ptrain = 84.39473684210527
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 16, Ptest = 46.375, Ptrain = 84.13157894736844
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 17, Ptest = 48.625, Ptrain = 84.48684210526316
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 18, Ptest = 49.25, Ptrain = 86.14473684210527
+{np.int32(2): 8, np.int32(0): 7, np.int32(1): 8}
+Bound = 30, Q = 3, K = 19, Ptest = 51.6875, Ptrain = 86.06578947368422

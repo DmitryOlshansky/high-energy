@@ -112,9 +112,10 @@ def experiment(rid, props_count, bound):
     #subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "split", "5", "spark-%s.fimi" % rid,  "train-%s.fimi" % rid, "verify-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "verify-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:%s" % bound, "train-%s.fimi" %rid], stdout=subprocess.DEVNULL, env=env) 
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-%s.fimi" % rid, "-o", "predictions-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-%s.fimi" % rid, "-o", "predictions-train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:%s" % bound, "train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env) 
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tune", "-m", "model-%s.fimi" % rid, "-o", "model-tuned-%s.fimi" % rid, "train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env) 
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-tuned-%s.fimi" % rid, "-o", "predictions-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-tuned-%s.fimi" % rid, "-o", "predictions-train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     text = subprocess.check_output(["./jsm4s/target/universal/stage/bin/jsm-cli", "stats", "verify-%s.fimi" % rid, "predictions-%s.fimi" % rid], env=env)
     for line in str(text).split("\n"):
         m = re.search(r"Correct predictions ratio \d+/\d+ (\d+\.\d+)%", line)
@@ -132,8 +133,8 @@ def experiment(rid, props_count, bound):
 pool = futures.ThreadPoolExecutor(10)
 
 
-for k in range(13,16):
-    for bound in range(30, 90, 10):
+for k in range(13,20):
+    for bound in range(30, 40, 10):
         for q in range(3, 4):
             km = KMeans(n_clusters=q, n_init='auto', random_state=0).fit(Y)
             prop_cluster = km.labels_
@@ -184,7 +185,7 @@ for k in range(13,16):
                     test, train = futures[i].result()
                     result_train += train
                     result_test += test
-                print("Test = %s, Train = %s" % (result_test / iters, result_train / iters))
+                #print("Test = %s, Train = %s" % (result_test / iters, result_train / iters))
                 avg_of_runs_test += result_test / iters
                 avg_of_runs_train += result_train / iters
             avg_of_runs_test /= runs
