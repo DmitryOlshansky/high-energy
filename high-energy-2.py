@@ -133,7 +133,7 @@ def experiment(rid, props_count, bound):
 pool = futures.ThreadPoolExecutor(10)
 
 
-for k in range(13,20):
+for k in range(13,26):
     for bound in range(30, 40, 10):
         for q in range(3, 4):
             km = KMeans(n_clusters=q, n_init='auto', random_state=0).fit(Y)
@@ -144,7 +144,7 @@ for k in range(13,20):
                     cluster_sizes[c] += 1
                 else:
                     cluster_sizes[c] = 1
-            print(cluster_sizes)
+            #print(cluster_sizes)
             #print(cluster_sizes[2] / (cluster_sizes[0] + cluster_sizes[2]))
             #print(prop_cluster)
             #print(len(prop_cluster))

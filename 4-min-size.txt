@@ -1,0 +1,13 @@
+Bound = 30, Q = 3, K = 13, Ptest = 44.25, Ptrain = 89.07894736842105
+Bound = 30, Q = 3, K = 14, Ptest = 44.3125, Ptrain = 89.1842105263158
+Bound = 30, Q = 3, K = 15, Ptest = 46.0625, Ptrain = 88.77631578947366
+Bound = 30, Q = 3, K = 16, Ptest = 48.375, Ptrain = 84.01315789473688
+Bound = 30, Q = 3, K = 17, Ptest = 53.6875, Ptrain = 83.64473684210527
+Bound = 30, Q = 3, K = 18, Ptest = 55.0625, Ptrain = 86.24999999999997
+Bound = 30, Q = 3, K = 19, Ptest = 56.6875, Ptrain = 86.14473684210529
+Bound = 30, Q = 3, K = 20, Ptest = 49.4375, Ptrain = 85.86842105263159
+Bound = 30, Q = 3, K = 21, Ptest = 50.375, Ptrain = 86.26315789473685
+Bound = 30, Q = 3, K = 22, Ptest = 51.25, Ptrain = 85.98684210526318
+Bound = 30, Q = 3, K = 23, Ptest = 41.9375, Ptrain = 86.05263157894737
+Bound = 30, Q = 3, K = 24, Ptest = 42.25, Ptrain = 86.26315789473685
+Bound = 30, Q = 3, K = 25, Ptest = 43.25, Ptrain = 86.50000000000003
