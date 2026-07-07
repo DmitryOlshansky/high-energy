@@ -80,8 +80,8 @@ def experiment(rid, props_count, bound):
     for i in range(0, len(data)):
         fcsp_line = encode_fcsp(csv['fcss'][i])
         max_nmr_line = nmr_encoder(csv['nmr'][i])
-        full_line = fcsp_line + " " + max_nmr_line
-        #full_line = max_nmr_line
+        #full_line = fcsp_line + " " + max_nmr_line
+        full_line = max_nmr_line
         p = prop_encoder(float(csv['spark'][i]))
         prop_part = " | %s" % p
         if p > 0:
@@ -113,7 +113,7 @@ def experiment(rid, props_count, bound):
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tau", "verify-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL,  env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "generate", "-m", "model-%s.fimi" % rid, "-a", "cbo", "--strategy=boundedVotingMajority:%s" % bound, "train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env) 
-    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tune", "-a3", "-t2", "-m", "model-%s.fimi" % rid, "-o", "model-tuned-%s.fimi" % rid, "train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env) 
+    subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "tune", "-a0", "-t2", "-m", "model-%s.fimi" % rid, "-o", "model-tuned-%s.fimi" % rid, "train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env) 
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-tuned-%s.fimi" % rid, "-o", "predictions-%s.fimi" % rid, "tau-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     subprocess.check_call(["./jsm4s/target/universal/stage/bin/jsm-cli", "predict",  "-m", "model-tuned-%s.fimi" % rid, "-o", "predictions-train-%s.fimi" % rid, "tau-train-%s.fimi" % rid], stdout=subprocess.DEVNULL, env=env)
     text = subprocess.check_output(["./jsm4s/target/universal/stage/bin/jsm-cli", "stats", "verify-%s.fimi" % rid, "predictions-%s.fimi" % rid], env=env)
@@ -133,7 +133,7 @@ def experiment(rid, props_count, bound):
 pool = futures.ThreadPoolExecutor(10)
 
 
-for k in range(13,26):
+for k in range(9,26):
     for bound in range(30, 40, 10):
         for q in range(3, 4):
             km = KMeans(n_clusters=q, n_init='auto', random_state=0).fit(Y)
